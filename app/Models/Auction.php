@@ -35,9 +35,21 @@ class Auction extends Model
         return $this->hasMany(AuctionBid::class);
     }
 
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function isActive(): bool
     {
         $now = now();
         return $this->starts_at <= $now && $this->ends_at >= $now && $this->status === 'active';
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('status', 'active')
+            ->where('starts_at', '<=', now())
+            ->where('ends_at', '>=', now());
     }
 }

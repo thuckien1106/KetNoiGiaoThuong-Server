@@ -65,9 +65,22 @@ class ListingController extends Controller
     public function store(ListingRequest $request): JsonResponse
     {
         try {
+            $user = $request->user();
+
+            // Kiểm tra quyền: chỉ seller và admin mới được đăng tin
+            if (!$user->canCreateListing()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Chỉ người bán (seller) mới có quyền đăng tin. Vui lòng nâng cấp tài khoản.'
+                ], 403);
+            }
+
             DB::beginTransaction();
 
-            $listing = Listing::create($request->validated());
+            $data = $request->validated();
+            $data['user_id'] = $user->id;
+
+            $listing = Listing::create($data);
 
             DB::commit();
 
@@ -82,7 +95,7 @@ class ListingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Lỗi máy chủ'
+                'message' => 'Lỗi máy chủ: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -93,6 +106,16 @@ class ListingController extends Controller
     public function update(ListingRequest $request, Listing $listing): JsonResponse
     {
         try {
+            $user = $request->user();
+
+            // Kiểm tra quyền: chỉ chủ listing hoặc admin mới được cập nhật
+            if ($listing->user_id !== $user->id && !$user->isAdmin()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Bạn không có quyền cập nhật bài đăng này'
+                ], 403);
+            }
+
             DB::beginTransaction();
 
             $listing->update($request->validated());
@@ -110,7 +133,7 @@ class ListingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Lỗi máy chủ'
+                'message' => 'Lỗi máy chủ: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -118,9 +141,19 @@ class ListingController extends Controller
     /**
      * DELETE - Xóa bài đăng
      */
-    public function destroy(Listing $listing): JsonResponse
+    public function destroy(Request $request, Listing $listing): JsonResponse
     {
         try {
+            $user = $request->user();
+
+            // Kiểm tra quyền: chỉ chủ listing hoặc admin mới được xóa
+            if ($listing->user_id !== $user->id && !$user->isAdmin()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Bạn không có quyền xóa bài đăng này'
+                ], 403);
+            }
+
             DB::beginTransaction();
 
             // Kiểm tra xem bài đăng có đang trong chiến dịch quảng cáo không
@@ -145,9 +178,41 @@ class ListingController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Lỗi máy chủ'
+                'message' => 'Lỗi máy chủ: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * PUT - Admin duyệt bài đăng
+     */
+    public function approve(Request $request, Listing $listing): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->isAdmin()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Chỉ admin mới có quyền duyệt bài đăng'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'status' => 'required|in:published,rejected',
+            'reason' => 'nullable|string|max:500',
+        ]);
+
+        $listing->update([
+            'status' => $validated['status'],
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $validated['status'] === 'published' 
+                ? 'Bài đăng đã được duyệt' 
+                : 'Bài đăng đã bị từ chối',
+            'data' => $listing
+        ]);
     }
 
     /**

@@ -194,3 +194,77 @@ Route::prefix('promotion')->group(function () {
     Route::put('/{id}', [PromotionController::class, 'update']);
     Route::delete('/{id}', [PromotionController::class, 'destroy']);
 });
+
+// Discovery & Social Features
+Route::prefix('discovery')->group(function () {
+    Route::get('search', [\App\Http\Controllers\Discovery\DiscoveryController::class, 'search']);
+});
+
+// Bookmarks (require auth)
+Route::prefix('bookmarks')->middleware('auth:api')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Discovery\BookmarkController::class, 'index']);
+    Route::post('/', [\App\Http\Controllers\Discovery\BookmarkController::class, 'store']);
+    Route::delete('/{listing_id}', [\App\Http\Controllers\Discovery\BookmarkController::class, 'destroy']);
+});
+
+// Listing Social Features (require auth)
+Route::prefix('listings')->middleware('auth:api')->group(function () {
+    Route::post('/{listing}/like', [\App\Http\Controllers\Discovery\SocialController::class, 'like']);
+    Route::delete('/{listing}/like', [\App\Http\Controllers\Discovery\SocialController::class, 'unlike']);
+    Route::post('/{listing}/comments', [\App\Http\Controllers\Discovery\SocialController::class, 'comment']);
+    Route::get('/{listing}/comments', [\App\Http\Controllers\Discovery\SocialController::class, 'getComments']);
+});
+
+// Chat (require auth)
+Route::prefix('chat')->middleware('auth:api')->group(function () {
+    Route::get('conversations', [\App\Http\Controllers\Discovery\ChatController::class, 'conversations']);
+    Route::get('messages/{user_id}', [\App\Http\Controllers\Discovery\ChatController::class, 'messages']);
+    Route::post('messages', [\App\Http\Controllers\Discovery\ChatController::class, 'send']);
+    Route::put('messages/{user_id}/read', [\App\Http\Controllers\Discovery\ChatController::class, 'markAsRead']);
+});
+
+// Inquiries
+Route::post('inquiries', [\App\Http\Controllers\Discovery\InquiryController::class, 'store']);
+Route::get('inquiries', [\App\Http\Controllers\Discovery\InquiryController::class, 'index'])->middleware('auth:api');
+
+// Auctions
+Route::prefix('auctions')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Discovery\AuctionController::class, 'index']);
+    Route::get('/{auction}', [\App\Http\Controllers\Discovery\AuctionController::class, 'show']);
+    
+    Route::middleware('auth:api')->group(function () {
+        Route::post('/', [\App\Http\Controllers\Discovery\AuctionController::class, 'store']);
+        Route::put('/{auction}', [\App\Http\Controllers\Discovery\AuctionController::class, 'update']);
+        Route::delete('/{auction}', [\App\Http\Controllers\Discovery\AuctionController::class, 'destroy']);
+        Route::post('/{auction}/bids', [\App\Http\Controllers\Discovery\AuctionController::class, 'placeBid']);
+        Route::get('/{auction}/bids', [\App\Http\Controllers\Discovery\AuctionController::class, 'getBids']);
+        Route::get('/my-bids', [\App\Http\Controllers\Discovery\AuctionController::class, 'myBids']);
+    });
+});
+
+// Support & FAQ
+Route::prefix('faqs')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Discovery\SupportController::class, 'faqs']);
+});
+
+Route::prefix('support')->middleware('auth:api')->group(function () {
+    Route::get('tickets', [\App\Http\Controllers\Discovery\SupportController::class, 'tickets']);
+    Route::post('tickets', [\App\Http\Controllers\Discovery\SupportController::class, 'createTicket']);
+    Route::get('tickets/{ticket}', [\App\Http\Controllers\Discovery\SupportController::class, 'showTicket']);
+    Route::post('tickets/{ticket}/messages', [\App\Http\Controllers\Discovery\SupportController::class, 'replyTicket']);
+    Route::put('tickets/{ticket}/close', [\App\Http\Controllers\Discovery\SupportController::class, 'closeTicket']);
+});
+
+// Statistics (require auth)
+Route::prefix('stats')->middleware('auth:api')->group(function () {
+    Route::get('overview', [\App\Http\Controllers\Api\ReportController::class, 'overview']);
+    Route::get('views', [\App\Http\Controllers\Api\ReportController::class, 'views']);
+    Route::get('revenue', [\App\Http\Controllers\Api\ReportController::class, 'revenue']);
+    Route::get('promotions', [\App\Http\Controllers\Api\ReportController::class, 'promotions']);
+});
+
+// Admin routes
+Route::prefix('admin')->middleware(['auth:api', 'admin'])->group(function () {
+    Route::get('users', [UserController::class, 'index']);
+    Route::put('listings/{listing}/approve', [ListingController::class, 'approve']);
+});

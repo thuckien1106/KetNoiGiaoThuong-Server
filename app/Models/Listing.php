@@ -105,4 +105,19 @@ class Listing extends Model
     {
         return $this->hasMany(Bookmark::class);
     }
+
+    public function auction()
+    {
+        return $this->hasOne(Auction::class);
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(ListingLike::class);
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(ListingComment::class);
+    }
 }
